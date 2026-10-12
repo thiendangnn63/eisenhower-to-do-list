@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en" data-theme="paper" data-mode="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Focus Board</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script>
+    // Apply the saved theme before first paint (no flash of the default theme)
+    (function () {
+      var d = document.documentElement, s = {};
+      try { s = (JSON.parse(localStorage.getItem('focusboard.v1') || '{}').settings) || {}; } catch (e) {}
+      var mode = s.mode || 'auto';
+      d.dataset.theme = s.theme || 'paper';
+      d.dataset.mode = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
+    })();
+  </script>
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="themes.css">
+  <!-- Optional personal themes, not in git (see .claude/skills/font-template) -->
+  <link rel="stylesheet" href="themes-local.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wordmark" aria-label="Focus Board"><span>Focus</span><span>Board</span></div>
+    <nav class="nav" role="tablist" aria-label="Views">
+      <button class="nav-link" role="tab" id="tab-tasks" data-view="tasks" aria-selected="true" aria-controls="view-tasks">Board</button>
+      <button class="nav-link" role="tab" id="tab-reminders" data-view="reminders" aria-selected="false" aria-controls="view-reminders">
+        Reminders <span class="badge" id="rem-badge" hidden></span>
+      </button>
+    </nav>
+    <div class="top-actions">
+      <button class="theme-btn" id="open-themes" aria-haspopup="dialog" aria-expanded="false">
+        <span class="swatches" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span id="theme-name">Paper</span>
+      </button>
+      <button class="icon-btn" id="open-bg" aria-label="Backgrounds" title="Backgrounds" aria-haspopup="dialog" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="m3.5 16 5-5 4.5 4.5 2.5-2.5 5 5"/><circle cx="15.5" cy="9" r="1.6" fill="currentColor"/></svg>
+      </button>
+      <button class="icon-btn" id="open-settings" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Theme picker -->
+  <div class="theme-panel" id="theme-panel" role="dialog" aria-label="Theme" hidden>
+    <div class="tp-head">
+      <span class="label">Theme</span>
+      <div class="mode-switch" role="radiogroup" aria-label="Light or dark">
+        <button type="button" role="radio" data-mode="auto">Auto</button>
+        <button type="button" role="radio" data-mode="light">Light</button>
+        <button type="button" role="radio" data-mode="dark">Dark</button>
+      </div>
+    </div>
+    <div id="theme-grid"></div>
+  </div>
+
+  <!-- Backgrounds (image files in the backgrounds/ folder) -->
+  <div class="bg-panel" id="bg-panel" role="dialog" aria-label="Backgrounds" hidden>
+    <div class="tp-head">
+      <span class="label">Backgrounds · <span id="bg-theme"></span></span>
+      <button type="button" class="btn sm" id="bg-reload">Reload</button>
+    </div>
+    <div class="bg-slot" data-slot="page">
+      <div class="bg-thumb">None</div>
+      <div class="bg-info">
+        <span class="bg-name">Whole page</span>
+        <code class="bg-file"></code>
+        <label class="field"><span>Fade <output></output></span><input type="range" min="0" max="95" step="5" aria-label="Page background fade"></label>
+      </div>
+    </div>
+    <div class="bg-slot" data-slot="plane">
+      <div class="bg-thumb">None</div>
+      <div class="bg-info">
+        <span class="bg-name">Plane</span>
+        <code class="bg-file"></code>
+        <label class="field"><span>Fade <output></output></span><input type="range" min="0" max="95" step="5" aria-label="Plane background fade"></label>
+      </div>
+    </div>
+    <p class="bg-help" id="bg-help"></p>
+    <div class="bg-path">
+      <input id="bg-folder" readonly aria-label="Folder for this theme's images">
+      <button type="button" class="btn sm" id="bg-copy">Copy path</button>
+    </div>
+  </div>
+
+  <section class="masthead" aria-label="Today">
+    <div class="mh-inner">
+      <div class="mh-date">
+        <div class="mh-day" id="mh-day"></div>
+        <div class="mh-sub" id="mh-sub"></div>
+      </div>
+      <figure class="mh-quote" id="mh-quote">
+        <blockquote id="mh-line"></blockquote>
+        <figcaption id="mh-credit"></figcaption>
+        <button type="button" class="shuffle" id="shuffle-line" aria-label="Show another line" title="Another one">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>
+        </button>
+      </figure>
+    </div>
+  </section>
+
+  <main>
+    <!-- ============ BOARD ============ -->
+    <section id="view-tasks" class="view tasks-view" role="tabpanel" aria-labelledby="tab-tasks">
+      <div class="board">
+        <div class="board-head">
+          <span class="label">The plane</span>
+          <p class="hint" id="plane-hint"></p>
+        </div>
+
+        <div class="plane-area">
+          <div class="axis axis-y" aria-hidden="true"><span>0</span><b>Importance →</b><span>10</span></div>
+          <div class="plane" id="plane" role="group" aria-label="Urgency and importance plane">
+            <div class="plane-bg" aria-hidden="true"></div>
+            <div class="plane-grid" aria-hidden="true"></div>
+            <div class="quad q-schedule"><small>02</small><span data-q="schedule"></span></div>
+            <div class="quad q-do"><small>01</small><span data-q="do"></span></div>
+            <div class="quad q-later"><small>04</small><span data-q="later"></span></div>
+            <div class="quad q-quick"><small>03</small><span data-q="quick"></span></div>
+            <div id="chips" class="chips"></div>
+            <p class="plane-empty" id="plane-empty"><span>Click anywhere to drop a task on that spot</span></p>
+            <form id="quick-add" class="quick-add" hidden autocomplete="off">
+              <span class="qa-marker" aria-hidden="true"></span>
+              <div class="qa-box">
+                <input id="qa-title" placeholder="What needs doing?" aria-label="Task title" required>
+                <div class="qa-row">
+                  <div class="diff-pick" id="qa-diff" data-value="3"></div>
+                  <button class="btn primary sm">Add</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div></div>
+          <div class="axis axis-x" aria-hidden="true"><span>0</span><b>Urgency →</b><span>10</span></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <form id="add-task" class="composer" autocomplete="off">
+          <input id="add-task-title" placeholder="Add a task…" aria-label="New task title" required>
+          <div class="composer-row">
+            <div class="diff-pick" id="add-task-diff" data-value="3"></div>
+            <input type="date" id="add-task-due" class="due-input" aria-label="Due date (optional)" title="Due date (optional)">
+            <button class="btn primary">Add</button>
+          </div>
+        </form>
+
+        <section class="next" id="next-card" aria-live="polite"></section>
+
+        <section class="block" id="queue-block">
+          <div class="label">Queue <span class="count" id="queue-count"></span></div>
+          <ol id="ranked" class="ranked"></ol>
+        </section>
+
+        <section class="block tray-card" id="tray-card">
+          <div class="label">To place <span class="count" id="tray-count"></span></div>
+          <ul id="tray" class="tray"></ul>
+          <p class="empty" id="tray-empty">New tasks land here. Drag one onto the plane, or click it and then click a spot. Drag a task back here to take it off the plane.</p>
+        </section>
+
+        <details class="block done-card" id="done-panel">
+          <summary class="label">Done <span class="count" id="done-count"></span></summary>
+          <ul id="done-list" class="done-list"></ul>
+          <button type="button" class="btn ghost sm" id="clear-done">Clear done tasks</button>
+        </details>
+      </aside>
+    </section>
+
+    <!-- ============ REMINDERS ============ -->
+    <section id="view-reminders" class="view reminders-view" role="tabpanel" aria-labelledby="tab-reminders" hidden>
+      <form id="add-rem" class="composer rem-composer" autocomplete="off">
+        <input id="add-rem-title" placeholder="Remind me to…" aria-label="Reminder" required>
+        <div class="composer-row wrap">
+          <input type="datetime-local" id="add-rem-due" aria-label="Date and time" required>
+          <select id="add-rem-repeat" aria-label="Repeat"></select>
+          <button class="btn primary">Add reminder</button>
+        </div>
+        <div class="presets" id="presets">
+          <button type="button" data-preset="1h">In 1 hour</button>
+          <button type="button" data-preset="tonight">Tonight 8 PM</button>
+          <button type="button" data-preset="tomorrow">Tomorrow 9 AM</button>
+          <button type="button" data-preset="monday">Next Monday 9 AM</button>
+        </div>
+      </form>
+
+      <div id="rem-groups" class="agenda"></div>
+      <p class="empty big" id="rem-empty">Nothing on the horizon. Add a reminder above.</p>
+
+      <details class="block done-card" id="rem-done-panel">
+        <summary class="label">Completed <span class="count" id="rem-done-count"></span></summary>
+        <ul id="rem-done-list" class="done-list"></ul>
+        <button type="button" class="btn ghost sm" id="clear-rem-done">Clear completed</button>
+      </details>
+    </section>
+  </main>
+
+  <!-- ============ DIALOGS ============ -->
+  <dialog id="task-dialog" class="dialog">
+    <form id="task-edit">
+      <div class="dialog-head"><span class="label">Task</span></div>
+      <input id="te-title" class="title-input" aria-label="Title" required>
+      <label class="field">
+        <span>Notes</span>
+        <textarea id="te-notes" rows="3" placeholder="Optional"></textarea>
+      </label>
+      <div class="field">
+        <span id="te-diff-label">Difficulty</span>
+        <div class="diff-pick wide" id="te-diff" data-value="3" aria-labelledby="te-diff-label"></div>
+      </div>
+      <div class="field">
+        <span><label for="te-due">Due date</label> <output id="te-due-out"></output></span>
+        <div class="due-row">
+          <input type="date" id="te-due">
+          <button type="button" class="btn ghost sm" id="te-due-clear">Clear</button>
+        </div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="te-placed"> <span>On the plane</span>
+      </label>
+      <div class="sliders" id="te-sliders">
+        <label class="field">
+          <span>Urgency <output id="te-urg-out"></output></span>
+          <input type="range" id="te-urg" min="0" max="10" step="0.5">
+        </label>
+        <label class="field">
+          <span>Importance <output id="te-imp-out"></output></span>
+          <input type="range" id="te-imp" min="0" max="10" step="0.5">
+        </label>
+      </div>
+      <p class="score-line" id="te-score"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger ghost" id="te-delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="rem-dialog" class="dialog">
+    <form id="rem-edit">
+      <div class="dialog-head"><span class="label">Reminder</span></div>
+      <input id="re-title" class="title-input" aria-label="Title" required>
+      <label class="field"><span>Notes</span><textarea id="re-notes" rows="3" placeholder="Optional"></textarea></label>
+      <div class="field-row">
+        <label class="field"><span>When</span><input type="datetime-local" id="re-due" required></label>
+        <label class="field"><span>Repeat</span><select id="re-repeat"></select></label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger ghost" id="re-delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog" class="dialog wide">
+    <form method="dialog">
+      <div class="dialog-head"><span class="label">Settings</span></div>
+
+      <h3>Scoring</h3>
+      <label class="field">
+        <span>Importance vs. urgency</span>
+        <input type="range" id="set-weight" min="0" max="100" step="5">
+        <small class="muted" id="set-weight-out"></small>
+      </label>
+      <label class="field">
+        <span>Difficulty preference</span>
+        <input type="range" id="set-bias" min="-25" max="25" step="5">
+        <div class="range-ends"><small>Hard first</small><small>Easy first</small></div>
+        <small class="muted" id="set-bias-out"></small>
+      </label>
+      <p class="formula" id="set-formula"></p>
+
+      <h3>Motivation</h3>
+      <label class="toggle"><input type="checkbox" id="set-show-lines"> <span>Show motivational lines</span></label>
+      <label class="field">
+        <span>Your own lines for <b id="set-lines-theme"></b>, used by every theme in the group</span>
+        <textarea id="set-custom-lines" rows="4" placeholder="One per line. To credit someone, end the line with -- and a name:&#10;Stay on the path -- Me"></textarea>
+      </label>
+      <label class="toggle"><input type="checkbox" id="set-only-custom"> <span>Only show my lines</span></label>
+
+      <h3>Notifications</h3>
+      <p class="muted" id="notif-status"></p>
+      <button type="button" class="btn" id="notif-enable">Enable desktop notifications</button>
+
+      <h3>Backup</h3>
+      <p class="muted">Your data lives in this browser. Export a copy now and then.</p>
+      <div class="btn-row">
+        <button type="button" class="btn" id="export-data">Export JSON</button>
+        <label class="btn">Import JSON<input type="file" id="import-data" accept="application/json,.json" hidden></label>
+      </div>
+
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button class="btn primary">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script src="themes.js"></script>
+  <script src="themes-local.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

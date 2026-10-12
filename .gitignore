@@ -1,0 +1,10 @@
+# Personal themes (see .claude/skills/font-template)
+themes-local.css
+themes-local.js
+
+# Background images are per-user
+backgrounds/*/
+!backgrounds/README.txt
+
+# Claude Code local settings
+.claude/settings.local.json

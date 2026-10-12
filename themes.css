@@ -1,0 +1,97 @@
+/* =========================================================
+   Focus Board — theme tokens
+   Each theme is a token set on [data-theme="id"], with dark variants on
+   [data-theme="id"][data-mode="dark"]. Anything a theme doesn't set falls
+   back to the defaults below. Any element can carry these attributes
+   (the theme picker's preview cards do).
+   ========================================================= */
+
+/* ---------- Defaults ---------- */
+[data-theme] {
+  --accent-ink: #ffffff;
+  --line-strong: var(--ink);
+  --q-do: color-mix(in srgb, var(--accent) 7%, transparent);
+  --grid: color-mix(in srgb, var(--ink) 6%, transparent);
+  --d1: #9aa98a; --d2: #c2a857; --d3: #d98e32; --d4: #d4621f; --d5: #a8301a;
+
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --font-ui: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+  --display-case: none;
+  --display-weight: 400;
+  --display-stretch: 100%;
+  --display-tracking: -0.01em;
+  --display-style: normal;
+  --quote-style: italic;
+  --quote-weight: var(--display-weight);
+  --quote-stretch: var(--display-stretch);
+  --quote-lh: 1.12;
+  --quote-rule: 0px;
+
+  --day-size: 64px;        /* masthead weekday */
+  --quote-size: 30px;      /* masthead line */
+  --size-wordmark: 22px;
+  --size-quad: 22px;
+  --size-next: 30px;
+  --size-dayname: 30px;    /* reminders agenda */
+  --size-title: 28px;      /* dialog title input */
+  --size-cheer: 17px;
+  --size-art: 21px;        /* theme picker card */
+  --nav-size: 14px;
+  --btn-size: 13.5px;
+  --btn-weight: 500;
+  --btn-case: none;
+  --btn-tracking: 0;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --pill: 999px;
+  --check-radius: 50%;
+  --chip-border: var(--line);
+  --chip-shadow: 0 1px 0 rgba(0, 0, 0, .05), 0 3px 10px rgba(0, 0, 0, .08);
+  --chip-first-bg: var(--ink);
+  --chip-first-ink: var(--bg);
+  --chip-first-rank: var(--accent);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, .2);
+  --next-deco: none;
+  --next-top: 1px;
+  --next-top-color: var(--line-strong);
+
+  --mh-bg: transparent;
+  --mh-ink: var(--ink);
+  --mh-muted: var(--muted);
+  --mh-mark: var(--accent);
+  --grain: 0;
+  color-scheme: light;
+}
+[data-theme][data-mode="dark"] { color-scheme: dark; }
+
+/* =========================================================
+   Focus Board
+   ========================================================= */
+/* Paper — an engineering graph pad: white sheet on a grey desk, blue-grey
+   grid, graphite ink, one red pen for what matters. Condensed grotesk
+   headings, like the printed labels on a chart. */
+[data-theme="paper"] {
+  --bg: #eceeed; --surface: #ffffff; --surface-2: #e2e5e6;
+  --ink: #16191d; --muted: #666d76; --line: #d4d8dc;
+  --accent: #d4451c;
+  --grid: rgba(58, 104, 150, .11);
+  --d1: #c2c7cd; --d2: #939aa3; --d3: #e0a13a; --d4: #e2692a; --d5: #b8321a;
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --display-weight: 650; --display-stretch: 78%; --display-tracking: -0.015em;
+  --quote-style: normal; --quote-weight: 500; --quote-stretch: 88%; --quote-lh: 1.2;
+  --day-size: 66px; --quote-size: 27px; --size-wordmark: 19px; --size-quad: 19px; --size-next: 26px; --size-dayname: 25px; --size-title: 24px; --size-cheer: 15px; --size-art: 19px;
+  --radius: 4px; --radius-sm: 3px; --pill: 3px; --check-radius: 3px;
+  --chip-shadow: 0 1px 0 rgba(22, 25, 29, .08);
+  --shadow-lg: 0 14px 40px rgba(22, 25, 29, .16);
+}
+[data-theme="paper"][data-mode="dark"] {
+  --bg: #101214; --surface: #171a1d; --surface-2: #20242a;
+  --ink: #e6e9ec; --muted: #8b929b; --line: #2a2f35;
+  --accent: #ff6a3d; --accent-ink: #101214;
+  --grid: rgba(120, 165, 210, .09);
+  --d1: #3a4048; --d2: #5f6873; --d3: #d99a3a; --d4: #f0703a; --d5: #ff5a3c;
+  --chip-shadow: none;
+  --shadow-lg: 0 14px 40px rgba(0, 0, 0, .45);
+}
