@@ -30,6 +30,7 @@ function defaultState() {
   return {
     tasks: [],
     reminders: [],
+    checklists: [],
     settings: {
       importanceWeight: 55,
       easeBias: 10,
@@ -51,6 +52,7 @@ function normalize(s) {
   return {
     tasks: Array.isArray(s?.tasks) ? s.tasks : [],
     reminders: Array.isArray(s?.reminders) ? s.reminders : [],
+    checklists: Array.isArray(s?.checklists) ? s.checklists : [],
     settings,
   };
 }
@@ -1325,6 +1327,8 @@ function tick() {
     save();
     alertReminders(due);
   }
+  checkChecklists();
+  if (!$('#cl-block').contains(document.activeElement)) renderChecklists();
   // Due dates keep pulling tasks right; redraw the plane (never mid-drag)
   if (!drag && state.tasks.some(t => t.due && !t.done)) {
     const focusedId = document.activeElement?.closest?.('.chip')?.dataset.id;
@@ -1339,6 +1343,256 @@ function tick() {
     renderReminders();
   }
 }
+
+/* =========================================================
+   CHECKLISTS
+   Each one pops up on its weekdays at its time (or on the first open after
+   that time, same day). Ticks are kept per day in log[YYYY-MM-DD] =
+   { ids, total }, so the boxes start empty every scheduled day and past
+   days feed the streak.
+   ========================================================= */
+
+const WEEK = [1, 2, 3, 4, 5, 6, 0]; // Monday first; values are Date#getDay()
+const dayName = (n, weekday = 'short') => new Date(2024, 0, n || 7).toLocaleDateString([], { weekday }); // 1 Jan 2024 was a Monday
+const dayKey = ts => toLocalInput(ts).slice(0, 10);
+const getList = id => state.checklists.find(c => c.id === id);
+const isListDay = (c, ts) => c.days.includes(new Date(ts).getDay());
+const listTimeOn = (c, ts) => { const [h, m] = c.time.split(':').map(Number); return atTime(ts, h, m); };
+const checkedOn = (c, key) => c.log[key]?.ids || [];
+
+// Today counts against the current items; past days against what the list held then
+function isComplete(c, key) {
+  const e = c.log[key];
+  if (!e) return false;
+  return key === dayKey(Date.now()) ? c.items.every(i => e.ids.includes(i.id)) : e.ids.length >= e.total;
+}
+
+function listDays(c) {
+  const d = WEEK.filter(n => c.days.includes(n));
+  if (d.length === 7) return 'Every day';
+  if (d.join() === '1,2,3,4,5') return 'Weekdays';
+  return d.map(n => dayName(n)).join(' ');
+}
+
+// Scheduled days in a row that were finished; today only counts once it's done
+function streak(c) {
+  const first = startOfDay(c.createdAt);
+  let d = startOfDay(Date.now());
+  if (isListDay(c, d) && !isComplete(c, dayKey(d))) d = addDays(d, -1);
+  let n = 0;
+  for (let i = 0; i < 400 && d >= first; i++, d = addDays(d, -1)) {
+    if (!isListDay(c, d)) continue;
+    if (!isComplete(c, dayKey(d))) break;
+    n++;
+  }
+  return n;
+}
+
+// The last few scheduled days (oldest first), for the history strip
+function recentDays(c, count = 7) {
+  const first = startOfDay(c.createdAt);
+  const out = [];
+  for (let d = startOfDay(Date.now()), i = 0; out.length < count && i < 60 && d >= first; i++, d = addDays(d, -1)) {
+    if (isListDay(c, d)) out.unshift(d);
+  }
+  return out;
+}
+
+function nextPop(c) {
+  const now = Date.now();
+  for (let i = 0; i < 8; i++) {
+    const d = addDays(startOfDay(now), i);
+    if (isListDay(c, d) && (i > 0 || listTimeOn(c, d) > now)) return listTimeOn(c, d);
+  }
+  return null;
+}
+
+const itemsHTML = c => {
+  const ids = checkedOn(c, dayKey(Date.now()));
+  return `<ul class="cl-items">${c.items.map(i => `
+    <li><label><input type="checkbox" class="check" data-item="${i.id}" ${ids.includes(i.id) ? 'checked' : ''}><span>${esc(i.text)}</span></label></li>`).join('')}</ul>`;
+};
+
+function listHTML(c) {
+  const now = Date.now();
+  const key = dayKey(now);
+  const today = isListDay(c, now);
+  const ids = checkedOn(c, key);
+  const done = c.items.filter(i => ids.includes(i.id)).length;
+  const s = streak(c);
+  const next = today ? null : nextPop(c);
+  const history = recentDays(c).map(d => {
+    const k = dayKey(d);
+    const n = checkedOn(c, k).length;
+    const [cls, text] = isComplete(c, k) ? ['done', 'done']
+      : k === key ? ['open', n ? `${n} of ${c.items.length} so far` : 'not started']
+      : n ? ['part', `${n} of ${c.log[k].total}`] : ['miss', 'missed'];
+    return `<i class="${cls}" title="${esc(fmtShortDate(d))}: ${text}"></i>`;
+  }).join('');
+  return `
+  <article class="cl ${isComplete(c, key) ? 'is-done' : ''}" data-id="${c.id}">
+    <header class="cl-head">
+      <button type="button" class="cl-name" data-act="edit" title="Edit">${esc(c.title)}</button>
+      ${today ? `<span class="cl-progress">${done}/${c.items.length}</span>` : ''}
+    </header>
+    <div class="cl-meta"><span>${esc(listDays(c))} · ${fmtTime(listTimeOn(c, now))}</span>${s ? `<span class="cl-streak">${s} in a row</span>` : ''}</div>
+    ${today ? itemsHTML(c) : next ? `<p class="cl-next">Next: ${esc(fmtWhen(next))}</p>` : ''}
+    ${history ? `<div class="cl-history">${history}</div>` : ''}
+  </article>`;
+}
+
+function renderChecklists() {
+  const lists = state.checklists;
+  const focused = document.activeElement?.closest?.('#cl-list [data-item]')?.dataset.item;
+  $('#cl-list').innerHTML = lists.map(listHTML).join('');
+  $('#cl-count').textContent = lists.length || '';
+  $('#cl-empty').hidden = lists.length > 0;
+  if (focused) $(`#cl-list [data-item="${focused}"]`)?.focus({ preventScroll: true });
+}
+
+function toggleItem(c, itemId) {
+  const now = Date.now();
+  const key = dayKey(now);
+  const e = (c.log[key] ||= { ids: [], total: c.items.length });
+  e.ids = e.ids.includes(itemId) ? e.ids.filter(x => x !== itemId) : [...e.ids, itemId];
+  e.total = c.items.length;
+  const cutoff = dayKey(addDays(now, -120));
+  for (const k of Object.keys(c.log)) if (k < cutoff) delete c.log[k];
+  save();
+  renderChecklists();
+  if (popDialog.open) renderPopActions();
+  if (isComplete(c, key)) {
+    const s = streak(c);
+    toast(`${esc(pick(artist().done))}<small>${esc(c.title)}${s > 1 ? `, ${s} in a row` : ''}</small>`, [], { html: true, cls: 'cheer' });
+  }
+}
+
+function onItemChange(e) {
+  const box = e.target.closest('[data-item]');
+  const c = box && getList(box.closest('[data-id]').dataset.id);
+  if (c) toggleItem(c, box.dataset.item);
+}
+$('#cl-list').addEventListener('change', onItemChange);
+$('#cl-list').addEventListener('click', e => {
+  if (e.target.closest('[data-act="edit"]')) openChecklist(e.target.closest('[data-id]').dataset.id);
+});
+$('#cl-new').addEventListener('click', () => openChecklist(null));
+
+/* ----- Pop-up ----- */
+
+const popDialog = $('#cl-pop');
+let popIds = [];
+
+function renderPopActions() {
+  const key = dayKey(Date.now());
+  $('#cl-pop-close').textContent = popIds.every(id => !getList(id) || isComplete(getList(id), key)) ? 'Done' : 'Later';
+}
+
+function popChecklists(ids) {
+  popIds = [...new Set([...(popDialog.open ? popIds : []), ...ids])];
+  const now = Date.now();
+  $('#cl-pop-body').innerHTML = popIds.map(getList).filter(Boolean).map(c => `
+    <section class="cl-pop" data-id="${c.id}">
+      <div class="label">${esc(dayName(new Date(now).getDay(), 'long'))} · ${fmtTime(listTimeOn(c, now))}</div>
+      <h2 class="cl-pop-title">${esc(c.title)}</h2>
+      ${itemsHTML(c)}
+    </section>`).join('');
+  renderPopActions();
+  if (!popDialog.open) popDialog.showModal();
+}
+$('#cl-pop-body').addEventListener('change', onItemChange);
+
+function checkChecklists() {
+  const now = Date.now();
+  const key = dayKey(now);
+  const due = state.checklists.filter(c => c.notified !== key && isListDay(c, now) && listTimeOn(c, now) <= now);
+  if (!due.length) return;
+  due.forEach(c => { c.notified = key; });
+  save();
+  const open = due.filter(c => !isComplete(c, key));
+  if (!open.length) return;
+  chime();
+  popChecklists(open.map(c => c.id));
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification(open.length === 1 ? open[0].title : `${open.length} checklists`, {
+        body: open.flatMap(c => c.items.map(i => `☐ ${i.text}`)).join('\n'), tag: `cl-${key}`, requireInteraction: true,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch { /* notifications unsupported here */ }
+  }
+}
+
+/* ----- Checklist editor ----- */
+
+const clDialog = $('#cl-dialog');
+let editingListId = null;
+
+$('#ce-days').innerHTML = WEEK.map(n =>
+  `<button type="button" data-day="${n}" aria-pressed="false" aria-label="${esc(dayName(n, 'long'))}">${esc(dayName(n))}</button>`).join('');
+$('#ce-days').addEventListener('click', e => {
+  const b = e.target.closest('[data-day]');
+  if (!b) return;
+  b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+  $('#ce-days-label').classList.remove('err');
+});
+
+function openChecklist(id) {
+  const c = id ? getList(id) : null;
+  editingListId = c ? id : null;
+  const days = c?.days || [1, 2, 3, 4, 5];
+  $('#ce-title').value = c?.title || '';
+  $('#ce-time').value = c?.time || '08:00';
+  $('#ce-items').value = c ? c.items.map(i => i.text).join('\n') : '';
+  $$('#ce-days [data-day]').forEach(b => b.setAttribute('aria-pressed', String(days.includes(Number(b.dataset.day)))));
+  $('#ce-days-label').classList.remove('err');
+  $('#ce-delete').hidden = !c;
+  clDialog.showModal();
+}
+
+$('#cl-edit').addEventListener('submit', e => {
+  e.preventDefault();
+  const title = $('#ce-title').value.trim();
+  const time = $('#ce-time').value;
+  const lines = $('#ce-items').value.split('\n').map(l => l.trim()).filter(Boolean);
+  const days = $$('#ce-days [aria-pressed="true"]').map(b => Number(b.dataset.day));
+  if (!days.length) { $('#ce-days-label').classList.add('err'); return; }
+  if (!title || !time || !lines.length) return;
+
+  const now = Date.now();
+  const key = dayKey(now);
+  let c = getList(editingListId);
+  if (!c) {
+    c = { id: uid(), log: {}, createdAt: now };
+    state.checklists.push(c);
+  }
+  // Keep ids for unchanged lines so today's ticks survive an edit
+  const pool = [...(c.items || [])];
+  const items = lines.map(text => {
+    const i = pool.findIndex(x => x.text === text);
+    return { id: i >= 0 ? pool.splice(i, 1)[0].id : uid(), text };
+  });
+  Object.assign(c, { title, days, time, items });
+  // Already past today's time: don't pop right away, it's on the board
+  c.notified = isListDay(c, now) && listTimeOn(c, now) <= now ? key : null;
+  if (c.log[key]) {
+    c.log[key].ids = c.log[key].ids.filter(x => items.some(i => i.id === x));
+    c.log[key].total = items.length;
+  }
+  save();
+  renderChecklists();
+  clDialog.close();
+});
+
+$('#ce-delete').addEventListener('click', () => {
+  clDialog.close();
+  const idx = state.checklists.findIndex(c => c.id === editingListId);
+  if (idx < 0) return;
+  const [c] = state.checklists.splice(idx, 1);
+  save();
+  renderChecklists();
+  toast(`Deleted “${c.title}”`, [{ label: 'Undo', run: () => { state.checklists.splice(idx, 0, c); save(); renderChecklists(); } }]);
+});
 
 /* =========================================================
    TOASTS
@@ -1450,7 +1704,7 @@ $('#import-data').addEventListener('change', async e => {
   if (!file) return;
   try {
     const data = normalize(JSON.parse(await file.text()));
-    if (!confirm(`Replace current data with ${data.tasks.length} tasks and ${data.reminders.length} reminders from “${file.name}”?`)) return;
+    if (!confirm(`Replace current data with ${data.tasks.length} tasks, ${data.reminders.length} reminders and ${(data.checklists || []).length} checklists from “${file.name}”?`)) return;
     state = data;
     save();
     applyTheme();
@@ -1493,6 +1747,7 @@ window.addEventListener('storage', e => {
 function renderAll() {
   renderTasks();
   renderReminders();
+  renderChecklists();
 }
 
 /* ----- Init ----- */

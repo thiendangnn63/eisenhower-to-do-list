@@ -50,6 +50,12 @@ Grouped Overdue / Today / Tomorrow / Next 7 days / Later. Repeat daily, weekdays
 Completing a repeating reminder rolls it to the next occurrence. Overdue ones can be snoozed.
 Alerts (toast + chime, plus a Windows notification if enabled in Settings) only fire while the app is open or minimized.
 
+## Checklists
+In the Board sidebar. Each checklist has weekdays, a time and a list of items (one per line). At that time it pops up
+with the chime and a Windows notification; if the app was closed then, it pops the next time you open it that day.
+Boxes start empty on every scheduled day. The streak counts scheduled days finished in a row, and the strip under each
+checklist shows the last seven scheduled days (filled = done, faded = partly done, empty = missed).
+
 ## Data
 Stored in the browser's localStorage (for `index.html` opened via the shortcut, that's Chrome's profile).
 Use Settings → Export JSON for backups. Clearing browser site data will erase it.

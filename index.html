@@ -150,6 +150,12 @@
 
         <section class="next" id="next-card" aria-live="polite"></section>
 
+        <section class="block" id="cl-block">
+          <div class="label">Checklists <span class="count" id="cl-count"></span><button type="button" class="label-btn" id="cl-new">+ New</button></div>
+          <div id="cl-list" class="cl-list"></div>
+          <p class="empty" id="cl-empty">A checklist pops up on the days and time you pick, like gym and one LeetCode problem on Mon, Tue and Thu.</p>
+        </section>
+
         <section class="block" id="queue-block">
           <div class="label">Queue <span class="count" id="queue-count"></span></div>
           <ol id="ranked" class="ranked"></ol>
@@ -254,6 +260,42 @@
         <span class="spacer"></span>
         <button type="button" class="btn ghost" data-close>Cancel</button>
         <button class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="cl-dialog" class="dialog">
+    <form id="cl-edit">
+      <div class="dialog-head"><span class="label">Checklist</span></div>
+      <input id="ce-title" class="title-input" aria-label="Name" placeholder="Morning routine" required>
+      <div class="field">
+        <span id="ce-days-label">Days</span>
+        <div class="day-pick" id="ce-days" role="group" aria-labelledby="ce-days-label"></div>
+      </div>
+      <label class="field">
+        <span>Pops up at</span>
+        <input type="time" id="ce-time" required>
+      </label>
+      <label class="field">
+        <span>Items, one per line</span>
+        <textarea id="ce-items" rows="5" placeholder="Go to gym&#10;Do 1 LeetCode problem" required></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" class="btn danger ghost" id="ce-delete">Delete</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" data-close>Cancel</button>
+        <button class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Pops up when a checklist's time comes -->
+  <dialog id="cl-pop" class="dialog">
+    <form method="dialog">
+      <div id="cl-pop-body" class="cl-pop-body"></div>
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" id="cl-pop-close">Later</button>
       </div>
     </form>
   </dialog>
