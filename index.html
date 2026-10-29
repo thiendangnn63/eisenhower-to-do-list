@@ -139,6 +139,12 @@
       </div>
 
       <aside class="side">
+        <section class="block" id="cl-block">
+          <div class="label">Checklists <span class="count" id="cl-count"></span><button type="button" class="label-btn" id="cl-new">+ New</button><button type="button" class="label-btn" id="cl-manage-btn">Manage</button></div>
+          <div id="cl-list" class="cl-list"></div>
+          <p class="empty" id="cl-empty"></p>
+        </section>
+
         <form id="add-task" class="composer" autocomplete="off">
           <input id="add-task-title" placeholder="Add a task…" aria-label="New task title" required>
           <div class="composer-row">
@@ -147,14 +153,8 @@
             <button class="btn primary">Add</button>
           </div>
         </form>
-
         <section class="next" id="next-card" aria-live="polite"></section>
 
-        <section class="block" id="cl-block">
-          <div class="label">Checklists <span class="count" id="cl-count"></span><button type="button" class="label-btn" id="cl-new">+ New</button></div>
-          <div id="cl-list" class="cl-list"></div>
-          <p class="empty" id="cl-empty">A checklist pops up on the days and time you pick, like gym and one LeetCode problem on Mon, Tue and Thu.</p>
-        </section>
 
         <section class="block" id="queue-block">
           <div class="label">Queue <span class="count" id="queue-count"></span></div>
@@ -285,6 +285,19 @@
         <span class="spacer"></span>
         <button type="button" class="btn ghost" data-close>Cancel</button>
         <button class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="cl-manage" class="dialog">
+    <form method="dialog">
+      <div class="dialog-head"><span class="label">Checklists</span></div>
+      <ul id="cm-list" class="cm-list"></ul>
+      <p class="empty" id="cm-empty">No checklists yet.</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn ghost" id="cm-new">+ New checklist</button>
+        <span class="spacer"></span>
+        <button class="btn primary" autofocus>Done</button>
       </div>
     </form>
   </dialog>

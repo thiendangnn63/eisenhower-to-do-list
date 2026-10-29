@@ -1416,12 +1416,12 @@ const itemsHTML = c => {
 function listHTML(c) {
   const now = Date.now();
   const key = dayKey(now);
-  const today = isListDay(c, now);
   const ids = checkedOn(c, key);
   const done = c.items.filter(i => ids.includes(i.id)).length;
   const s = streak(c);
-  const next = today ? null : nextPop(c);
-  const history = recentDays(c).map(d => {
+  const days = recentDays(c);
+  // A strip of just today says nothing; show it once there's a past day
+  const history = days.length > 1 && days.map(d => {
     const k = dayKey(d);
     const n = checkedOn(c, k).length;
     const [cls, text] = isComplete(c, k) ? ['done', 'done']
@@ -1433,21 +1433,26 @@ function listHTML(c) {
   <article class="cl ${isComplete(c, key) ? 'is-done' : ''}" data-id="${c.id}">
     <header class="cl-head">
       <button type="button" class="cl-name" data-act="edit" title="Edit">${esc(c.title)}</button>
-      ${today ? `<span class="cl-progress">${done}/${c.items.length}</span>` : ''}
+      <span class="cl-progress">${done}/${c.items.length}</span>
     </header>
     <div class="cl-meta"><span>${esc(listDays(c))} · ${fmtTime(listTimeOn(c, now))}</span>${s ? `<span class="cl-streak">${s} in a row</span>` : ''}</div>
-    ${today ? itemsHTML(c) : next ? `<p class="cl-next">Next: ${esc(fmtWhen(next))}</p>` : ''}
+    ${itemsHTML(c)}
     ${history ? `<div class="cl-history">${history}</div>` : ''}
   </article>`;
 }
 
+// The sidebar shows only today's checklists; Manage lists them all
 function renderChecklists() {
-  const lists = state.checklists;
+  const all = state.checklists;
+  const today = all.filter(c => isListDay(c, Date.now()));
   const focused = document.activeElement?.closest?.('#cl-list [data-item]')?.dataset.item;
-  $('#cl-list').innerHTML = lists.map(listHTML).join('');
-  $('#cl-count').textContent = lists.length || '';
-  $('#cl-empty').hidden = lists.length > 0;
+  $('#cl-list').innerHTML = today.map(listHTML).join('');
+  $('#cl-count').textContent = today.length || '';
+  $('#cl-manage-btn').hidden = !all.length;
+  $('#cl-empty').textContent = all.length ? 'Nothing scheduled today.' : 'A checklist pops up on the days and time you pick, like gym and one LeetCode problem on Mon, Tue and Thu.';
+  $('#cl-empty').hidden = today.length > 0;
   if (focused) $(`#cl-list [data-item="${focused}"]`)?.focus({ preventScroll: true });
+  if (manageDialog.open) renderManage();
 }
 
 function toggleItem(c, itemId) {
@@ -1477,6 +1482,33 @@ $('#cl-list').addEventListener('click', e => {
   if (e.target.closest('[data-act="edit"]')) openChecklist(e.target.closest('[data-id]').dataset.id);
 });
 $('#cl-new').addEventListener('click', () => openChecklist(null));
+
+/* ----- Manage: every checklist, today's or not ----- */
+
+const manageDialog = $('#cl-manage');
+
+function renderManage() {
+  const lists = state.checklists;
+  $('#cm-list').innerHTML = lists.map(c => {
+    const next = nextPop(c);
+    const s = streak(c);
+    return `
+    <li data-id="${c.id}">
+      <button type="button" class="cm-row" data-act="edit">
+        <span class="cm-name">${esc(c.title)}</span>
+        <span class="cl-meta"><span>${esc(listDays(c))} · ${fmtTime(listTimeOn(c, Date.now()))}</span><span>${c.items.length} ${c.items.length === 1 ? 'item' : 'items'}</span>${s ? `<span class="cl-streak">${s} in a row</span>` : ''}</span>
+        ${next ? `<span class="cm-next">Next: ${esc(fmtWhen(next))}</span>` : ''}
+      </button>
+    </li>`;
+  }).join('');
+  $('#cm-empty').hidden = lists.length > 0;
+}
+
+$('#cl-manage-btn').addEventListener('click', () => { renderManage(); manageDialog.showModal(); });
+$('#cm-list').addEventListener('click', e => {
+  if (e.target.closest('[data-act="edit"]')) openChecklist(e.target.closest('[data-id]').dataset.id);
+});
+$('#cm-new').addEventListener('click', () => openChecklist(null));
 
 /* ----- Pop-up ----- */
 

@@ -51,7 +51,7 @@ Completing a repeating reminder rolls it to the next occurrence. Overdue ones ca
 Alerts (toast + chime, plus a Windows notification if enabled in Settings) only fire while the app is open or minimized.
 
 ## Checklists
-In the Board sidebar. Each checklist has weekdays, a time and a list of items (one per line). At that time it pops up
+At the top of the Board sidebar, which shows only the ones scheduled for today; Manage lists them all. Each checklist has weekdays, a time and a list of items (one per line). At that time it pops up
 with the chime and a Windows notification; if the app was closed then, it pops the next time you open it that day.
 Boxes start empty on every scheduled day. The streak counts scheduled days finished in a row, and the strip under each
 checklist shows the last seven scheduled days (filled = done, faded = partly done, empty = missed).

@@ -683,6 +683,21 @@ input[type="time"]:hover:not(:focus) { border-color: color-mix(in srgb, var(--in
   font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--ink);
 }
 .label-btn:hover { color: var(--accent); }
+.label-btn + .label-btn { margin-left: 8px; }
+.cm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cm-list:empty { display: none; }
+.cm-row {
+  display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 12px 14px; cursor: pointer; text-align: left;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface);
+}
+.cm-row:hover { border-color: var(--ink); }
+.cm-row .cl-meta { margin-top: 0; }
+.cm-name {
+  font-family: var(--font-display); font-weight: var(--display-weight); font-stretch: var(--display-stretch);
+  text-transform: var(--display-case); letter-spacing: var(--display-tracking); font-style: var(--display-style);
+  font-size: 18px; line-height: 1.15; overflow-wrap: anywhere;
+}
+.cm-next { font-size: 13px; color: var(--muted); }
 .cl-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .cl-list:empty { display: none; }
 .cl { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
@@ -699,7 +714,6 @@ input[type="time"]:hover:not(:focus) { border-color: color-mix(in srgb, var(--in
 .cl.is-done .cl-progress { color: var(--accent); }
 .cl-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font: 500 10.5px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .cl-streak { color: var(--ink); }
-.cl-next { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
 .cl-items { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .cl-items label { display: flex; align-items: center; gap: 10px; padding: 5px 0; cursor: pointer; }
 .cl-items .check { flex: none; }
